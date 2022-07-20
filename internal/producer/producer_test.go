@@ -2,7 +2,9 @@ package producer
 
 import (
 	"context"
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -15,11 +17,18 @@ func TestSendMessage(t *testing.T) {
 		t.Fatal(err)
 	}
 	mes := models.Message{
-		ID:      uuid.New(),
+		ID:      uuid.UUID{},
 		PayLoad: "Some payLoad",
 	}
-	err = prod.SendMessage(context.Background(), &mes)
-	if err != nil {
-		t.Fatal(t)
+	for i := 0; ; i++ {
+		mes.ID = uuid.New()
+		err = prod.SendMessage(context.Background(), &mes)
+		if err != nil {
+			t.Fatal(t)
+		}
+		if i%10000 == 0 {
+			fmt.Println(i)
+			time.Sleep(1 * time.Second)
+		}
 	}
 }

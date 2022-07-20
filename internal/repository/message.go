@@ -1,10 +1,12 @@
 package repository
 
 import (
-	"KafkaWriterReader/internal/models"
 	"context"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
+
+	"testRabitMQ/internal/models"
 )
 
 type MessageRepository interface {

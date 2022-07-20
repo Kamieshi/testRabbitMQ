@@ -1,16 +1,18 @@
 package repository
 
 import (
-	"KafkaWriterReader/internal/conf"
-	"KafkaWriterReader/internal/models"
 	"context"
 	"fmt"
+	"os"
+	"testing"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/stretchr/testify/assert"
-	"os"
-	"testing"
+
+	"testRabitMQ/internal/conf"
+	"testRabitMQ/internal/models"
 )
 
 var pool *pgxpool.Pool
