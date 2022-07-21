@@ -4,20 +4,22 @@ package producer
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 
 	"testRabitMQ/internal/models"
 )
 
-type producerRabbit struct {
+// Rabbit Producer rabbit
+type Rabbit struct {
 	conn   *amqp.Connection
 	queue  *amqp.Queue
 	chanel *amqp.Channel
 }
 
 // NewProducer constructor
-func NewProducer(urlCon, queueName string) (*producerRabbit, error) {
+func NewProducer(urlCon, queueName string) (*Rabbit, error) {
 	conn, err := amqp.Dial(urlCon)
 	if err != nil {
 		return nil, err
@@ -34,16 +36,18 @@ func NewProducer(urlCon, queueName string) (*producerRabbit, error) {
 		false,     // no-wait
 		nil,       // arguments
 	)
-
-	return &producerRabbit{
+	if err != nil {
+		return nil, fmt.Errorf("producer/NewProducer : %v", err)
+	}
+	return &Rabbit{
 		conn:   conn,
 		queue:  &q,
 		chanel: ch,
-	}, err
+	}, nil
 }
 
 // SendMessage send message to queue
-func (p *producerRabbit) SendMessage(ctx context.Context, message *models.Message) error {
+func (p *Rabbit) SendMessage(ctx context.Context, message *models.Message) error {
 	data, err := json.Marshal(message)
 	if err != nil {
 		return err
@@ -58,5 +62,8 @@ func (p *producerRabbit) SendMessage(ctx context.Context, message *models.Messag
 			ContentType: "text/plain",
 			Body:        data,
 		})
-	return err
+	if err != nil {
+		return fmt.Errorf("producer/SendMessage : %v", err)
+	}
+	return nil
 }

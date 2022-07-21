@@ -3,9 +3,9 @@ module testRabitMQ
 go 1.18
 
 require (
+	github.com/caarlos0/env v3.5.0+incompatible
 	github.com/google/uuid v1.3.0
 	github.com/jackc/pgx/v4 v4.16.1
-	github.com/joho/godotenv v1.4.0
 	github.com/rabbitmq/amqp091-go v1.4.0
 	github.com/sirupsen/logrus v1.4.2
 	github.com/stretchr/testify v1.7.0

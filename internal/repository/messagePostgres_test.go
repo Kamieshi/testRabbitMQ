@@ -21,12 +21,12 @@ var repMessage *MessageRepositoryPostgres
 
 func TestMain(m *testing.M) {
 	var err error
-	config, err := conf.GetConfig()
+	config, err := conf.NewConfig()
 	if err != nil {
 		panic(fmt.Errorf("repository.MainTest: %v", err))
 	}
 
-	pool, err = pgxpool.Connect(ctx, fmt.Sprintf("postgres://%v:%v@%v:%v/%v", config.POSTGRES_USER, config.POSTGRES_PASSWORD, config.POSTGRES_HOST, config.POSTGRES_PORT, config.POSTGRES_DB))
+	pool, err = pgxpool.Connect(ctx, fmt.Sprintf("postgres://%v:%v@%v:%v/%v", config.PostgresUser, config.PostgresPassword, config.PostgresHost, config.PostgresPort, config.PostgresDB))
 	if err != nil {
 		panic(fmt.Errorf("repository.MainTest poolconnection: %v", err))
 	}
@@ -42,7 +42,10 @@ func TestMessageRepositoryPostgres_Write(t *testing.T) {
 	err := repMessage.Write(ctx, &message)
 	assert.Nil(t, err)
 	t.Cleanup(func() {
-		repMessage.Delete(ctx, message.ID)
+		err = repMessage.Delete(ctx, message.ID)
+		if err != nil {
+			t.Error(err)
+		}
 	})
 }
 
@@ -54,7 +57,10 @@ func TestMessageRepositoryPostgres_Get(t *testing.T) {
 
 	assert.Nil(t, err)
 	t.Cleanup(func() {
-		repMessage.Delete(ctx, message.ID)
+		err = repMessage.Delete(ctx, message.ID)
+		if err != nil {
+			t.Error(err)
+		}
 	})
 	actualMessage, err := repMessage.Get(ctx, message.ID)
 	assert.Nil(t, err)

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v4"
+	log "github.com/sirupsen/logrus"
 
 	"testRabitMQ/internal/repository"
 
@@ -14,14 +15,14 @@ import (
 	"testRabitMQ/internal/models"
 )
 
-type consumerRabbit struct {
+type Rabbit struct {
 	conn   *amqp.Connection
 	queue  *amqp.Queue
 	chanel *amqp.Channel
 }
 
 // NewConsumer constructor
-func NewConsumer(urlCon, queueName string) (*consumerRabbit, error) {
+func NewConsumer(urlCon, queueName string) (*Rabbit, error) {
 	conn, err := amqp.Dial(urlCon)
 	if err != nil {
 		return nil, err
@@ -39,14 +40,15 @@ func NewConsumer(urlCon, queueName string) (*consumerRabbit, error) {
 		nil,       // arguments
 	)
 
-	return &consumerRabbit{
+	return &Rabbit{
 		conn:   conn,
 		queue:  &q,
 		chanel: ch,
 	}, err
 }
 
-func (c *consumerRabbit) GetMessage(ctx context.Context, chErr chan error, chOut chan *models.Message) {
+// GetMessage Get one message
+func (c *Rabbit) GetMessage(ctx context.Context, chErr chan error, chOut chan *models.Message) {
 	msgs, err := c.chanel.Consume(
 		c.queue.Name, // queue
 		"",           // consumer
@@ -75,8 +77,9 @@ func (c *consumerRabbit) GetMessage(ctx context.Context, chErr chan error, chOut
 	}
 }
 
-func (c *consumerRabbit) StreamListening(ctx context.Context, chErr chan error, chOut chan *models.Message) {
-	msgs, err := c.chanel.Consume(
+// StreamListening Get more messages
+func (c *Rabbit) StreamListening(ctx context.Context, chOut chan *models.Message) {
+	msgCh, err := c.chanel.Consume(
 		c.queue.Name, // queue
 		"",           // consumer
 		true,         // auto-ack
@@ -87,18 +90,18 @@ func (c *consumerRabbit) StreamListening(ctx context.Context, chErr chan error, 
 	)
 
 	if err != nil {
-		chErr <- err
+		log.WithError(err).Error()
 		return
 	}
 	for {
 		select {
 		case <-ctx.Done():
-			chErr <- ctx.Err()
-		case d := <-msgs:
+			log.WithError(err).Info()
+		case d := <-msgCh:
 			var message models.Message
 			err = json.Unmarshal(d.Body, &message)
 			if err != nil {
-				chErr <- err
+				log.WithError(err).Error()
 				return
 			}
 			chOut <- &message
@@ -106,8 +109,9 @@ func (c *consumerRabbit) StreamListening(ctx context.Context, chErr chan error, 
 	}
 }
 
-func (c *consumerRabbit) StreamListeningAndWriteToDB(ctx context.Context, chErr chan error, rep *repository.MessageRepositoryPostgres) {
-	msgs, err := c.chanel.Consume(
+// StreamListeningAndWriteToDB Write all queue in db
+func (c *Rabbit) StreamListeningAndWriteToDB(ctx context.Context, rep *repository.MessageRepositoryPostgres) {
+	msgCh, err := c.chanel.Consume(
 		c.queue.Name, // queue
 		"",           // consumer
 		true,         // auto-ack
@@ -118,7 +122,7 @@ func (c *consumerRabbit) StreamListeningAndWriteToDB(ctx context.Context, chErr 
 	)
 	var batchPgx pgx.Batch
 	if err != nil {
-		chErr <- err
+		log.WithError(err).Error()
 		return
 	}
 	var message models.Message
@@ -126,26 +130,26 @@ func (c *consumerRabbit) StreamListeningAndWriteToDB(ctx context.Context, chErr 
 	for {
 		select {
 		case <-ctx.Done():
-			chErr <- ctx.Err()
+			log.WithError(err).Info()
 			if batchPgx.Len() != 0 {
 				err = rep.BatchQuery(ctx, &batchPgx)
 				if err != nil {
-					chErr <- err
+					log.WithError(err).Error()
 				}
 			}
 			return
-		case d := <-msgs:
+		case d := <-msgCh:
 
 			err = json.Unmarshal(d.Body, &message)
 			if err != nil {
-				chErr <- err
+				log.WithError(err).Error()
 				continue
 			}
 			batchPgx.Queue("INSERT INTO messages(id,pay_load) values ($1,$2)", message.ID, message.PayLoad)
 			if batchPgx.Len() > 1000 || nextTime.Before(time.Now()) {
 				err = rep.BatchQuery(ctx, &batchPgx)
 				if err != nil {
-					chErr <- err
+					log.WithError(err).Error()
 					continue
 				}
 				batchPgx = pgx.Batch{}
@@ -155,7 +159,7 @@ func (c *consumerRabbit) StreamListeningAndWriteToDB(ctx context.Context, chErr 
 			if batchPgx.Len() != 0 && nextTime.Before(time.Now()) {
 				err = rep.BatchQuery(ctx, &batchPgx)
 				if err != nil {
-					chErr <- err
+					log.WithError(err).Error()
 				}
 				batchPgx = pgx.Batch{}
 				nextTime = time.Now().Add(10 * time.Millisecond)

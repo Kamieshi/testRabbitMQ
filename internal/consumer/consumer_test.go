@@ -37,19 +37,19 @@ func TestStreamListeningAndWriteToDB(t *testing.T) {
 	}
 	chErr := make(chan error)
 
-	config, err := conf.GetConfig()
+	config, err := conf.NewConfig()
 	if err != nil {
 		panic(fmt.Errorf("repository.MainTest: %v", err))
 	}
 
-	pool, err := pgxpool.Connect(context.Background(), fmt.Sprintf("postgres://%v:%v@%v:%v/%v", config.POSTGRES_USER, config.POSTGRES_PASSWORD, config.POSTGRES_HOST, config.POSTGRES_PORT, config.POSTGRES_DB))
+	pool, err := pgxpool.Connect(context.Background(), fmt.Sprintf("postgres://%v:%v@%v:%v/%v", config.PostgresUser, config.PostgresPassword, config.PostgresHost, config.PostgresPort, config.PostgresDB))
 	if err != nil {
 		panic(fmt.Errorf("repository.MainTest poolconnection: %v", err))
 	}
 	repMessage := repository.NewMessageRepositoryPostgres(pool)
 
 	ctxWT, _ := context.WithTimeout(context.Background(), 15*time.Minute)
-	go prod.StreamListeningAndWriteToDB(ctxWT, chErr, repMessage)
+	go prod.StreamListeningAndWriteToDB(ctxWT, repMessage)
 
 	for err = range chErr {
 		if err == ctxWT.Err() {
