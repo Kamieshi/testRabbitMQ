@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -58,26 +57,8 @@ func (m *MessageRepositoryPostgres) Write(ctx context.Context, message *models.M
 
 func (m *MessageRepositoryPostgres) BatchQuery(ctx context.Context, bt *pgx.Batch) error {
 	br := m.Pool.SendBatch(ctx, bt)
-
 	if err := br.Close(); err != nil {
 		return fmt.Errorf("messagePostgres.go/Write Close Batch Postgres unsuccess:%v", err)
 	}
 	return nil
-	res, err := br.Exec()
-	defer br.Close()
-	if err != nil {
-		return err
-		return fmt.Errorf("messagePostgres.go/BranchWrite :%v", err)
-	}
-	if int64(bt.Len()) == res.RowsAffected() {
-		return fmt.Errorf("messagePostgres.go/BranchWrite :%v", errors.New("Count query in branch not equal like resoult"))
-	}
-
-	if err != nil {
-		return fmt.Errorf("messagePostgres.go/BranchWrite :%v", err)
-	}
-	var afterBatchCountRows int
-	err = m.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM messages").Scan(&afterBatchCountRows)
-	fmt.Println(afterBatchCountRows)
-	return err
 }
