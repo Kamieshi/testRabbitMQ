@@ -21,6 +21,8 @@ type Rabbit struct {
 	chanel *amqp.Channel
 }
 
+const waitTimeMlSec = 10
+
 // NewConsumer constructor
 func NewConsumer(urlCon, queueName string) (*Rabbit, error) {
 	conn, err := amqp.Dial(urlCon)
@@ -126,7 +128,7 @@ func (c *Rabbit) StreamListeningAndWriteToDB(ctx context.Context, rep *repositor
 		return
 	}
 	var message models.Message
-	nextTime := time.Now().Add(10 * time.Millisecond)
+	nextTime := time.Now().Add(waitTimeMlSec * time.Millisecond)
 	for {
 		select {
 		case <-ctx.Done():
@@ -153,7 +155,7 @@ func (c *Rabbit) StreamListeningAndWriteToDB(ctx context.Context, rep *repositor
 					continue
 				}
 				batchPgx = pgx.Batch{}
-				nextTime = time.Now().Add(10 * time.Millisecond)
+				nextTime = time.Now().Add(waitTimeMlSec * time.Millisecond)
 			}
 		default:
 			if batchPgx.Len() != 0 && nextTime.Before(time.Now()) {
@@ -162,7 +164,7 @@ func (c *Rabbit) StreamListeningAndWriteToDB(ctx context.Context, rep *repositor
 					log.WithError(err).Error()
 				}
 				batchPgx = pgx.Batch{}
-				nextTime = time.Now().Add(10 * time.Millisecond)
+				nextTime = time.Now().Add(waitTimeMlSec * time.Millisecond)
 			}
 		}
 	}
